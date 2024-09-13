@@ -1,0 +1,6 @@
+@Entrelinhas_HostAddress = http://localhost:5101
+
+GET {{Entrelinhas_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
