@@ -3,7 +3,7 @@
     public class Venda
     {
         public Guid VendaId { get; set; }
-        public long UsuariosId { get; set; }
+        public Guid UsuariosId { get; set; }
         public string? GoogleBooksId { get; set; }
         public string? Titulo { get; set; }
         public decimal Preco { get; set; }

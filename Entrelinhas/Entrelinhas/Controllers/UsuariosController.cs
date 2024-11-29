@@ -7,6 +7,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Entrelinhas.Data;
 using Entrelinhas.Models;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.Extensions.Configuration;
 
 namespace Entrelinhas.Controllers
 {
@@ -15,10 +20,12 @@ namespace Entrelinhas.Controllers
     public class UsuariosController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public UsuariosController(ApplicationDbContext context)
+        public UsuariosController(ApplicationDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         // GET: api/Usuarios
@@ -42,8 +49,44 @@ namespace Entrelinhas.Controllers
             return usuario;
         }
 
+        // POST: api/Usuarios/login
+        [HttpPost("login")]
+        public IActionResult Login([FromBody] Login login)
+        {
+            // Verificar o usuário no banco de dados
+            var user = _context.Usuarios.SingleOrDefault(u => u.Email == login.Username && u.Senha == login.Password);
+
+            if (user == null)
+            {
+                return Unauthorized("Usuário ou senha inválidos.");
+            }
+
+            // Definir as claims que o token deve conter
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, login.Username),
+                new Claim("usuarioId", user.UsuarioId.ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(30),
+                signingCredentials: creds);
+
+            return Ok(new
+            {
+                token = new JwtSecurityTokenHandler().WriteToken(token),
+                usuarioId = user.UsuarioId
+            });
+        }
+
         // PUT: api/Usuarios/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUsuario(Guid id, Usuario usuario)
         {
@@ -74,10 +117,10 @@ namespace Entrelinhas.Controllers
         }
 
         // POST: api/Usuarios
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Usuario>> PostUsuario(Usuario usuario)
         {
+            usuario.UsuarioId = Guid.NewGuid(); // Gera o Guid no backend
             _context.Usuarios.Add(usuario);
             await _context.SaveChangesAsync();
 

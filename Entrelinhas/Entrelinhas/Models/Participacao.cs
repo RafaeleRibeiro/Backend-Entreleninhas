@@ -5,8 +5,8 @@
         public Guid ParticipacaoId { get; set; }
 
         // Foreign keys
-        public long UsuariosId { get; set; }
-        public long EventosId { get; set; }
+        public Guid UsuariosId { get; set; }
+        public Guid EventosId { get; set; }
 
         // Navigation properties
         public Usuario? Usuario { get; set; }
